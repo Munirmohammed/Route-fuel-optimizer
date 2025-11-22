@@ -57,24 +57,26 @@ class FuelOptimizer:
         lat, lng = target_coord
         radius = 1.0
         
-        stations = FuelStation.objects.filter(
+        stations_query = FuelStation.objects.filter(
             latitude__range=(lat - radius, lat + radius),
             longitude__range=(lng - radius, lng + radius)
-        ).order_by('retail_price')[:100]
+        ).order_by('retail_price')
         
-        if not stations.exists():
-            stations = FuelStation.objects.all().order_by('retail_price')[:100]
+        if not stations_query.exists():
+            stations_query = FuelStation.objects.all().order_by('retail_price')
+        
+        stations = list(stations_query[:100])
         
         self._ensure_stations_geocoded(stations)
         
-        stations = stations.filter(geocoded=True)
+        geocoded_stations = [s for s in stations if s.geocoded]
         
         valid_stations = []
-        for station in stations:
+        for station in geocoded_stations:
             if self._is_near_route(station, route_coords):
                 valid_stations.append(station)
         
-        return valid_stations[0] if valid_stations else stations.first()
+        return valid_stations[0] if valid_stations else (geocoded_stations[0] if geocoded_stations else None)
     
     def _ensure_stations_geocoded(self, stations):
         cities_to_geocode = set()

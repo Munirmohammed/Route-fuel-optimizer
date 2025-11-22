@@ -1,14 +1,10 @@
 import requests
 from django.core.cache import cache
-from decouple import config
 import polyline
 
 
-class RouteService:
-    BASE_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
-    
-    def __init__(self, api_key=None):
-        self.api_key = api_key or config('OPENROUTE_API_KEY')
+class OSRMRouteService:
+    BASE_URL = "http://router.project-osrm.org/route/v1/driving"
     
     def get_route(self, start_location, end_location):
         cache_key = f"route_{start_location.replace(' ', '_').replace(',', '')}_{end_location.replace(' ', '_').replace(',', '')}"
@@ -19,30 +15,14 @@ class RouteService:
         start_coords = self._geocode_location(start_location)
         end_coords = self._geocode_location(end_location)
         
-        headers = {
-            'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
-            'Content-Type': 'application/json; charset=utf-8'
-        }
+        url = f"{self.BASE_URL}/{start_coords['lng']},{start_coords['lat']};{end_coords['lng']},{end_coords['lat']}"
         
         params = {
-            'api_key': self.api_key
+            'overview': 'full',
+            'geometries': 'polyline'
         }
         
-        body = {
-            'coordinates': [
-                [start_coords['lng'], start_coords['lat']],
-                [end_coords['lng'], end_coords['lat']]
-            ]
-        }
-        
-        response = requests.post(self.BASE_URL, json=body, headers=headers, params=params)
-        
-        if response.status_code == 403:
-            raise ValueError(
-                "OpenRouteService API key is invalid or not activated. "
-                "Please check your API key at https://openrouteservice.org/dev/#/home"
-            )
-        
+        response = requests.get(url, params=params)
         response.raise_for_status()
         
         data = response.json()
@@ -60,13 +40,16 @@ class RouteService:
         return {'lat': result.latitude, 'lng': result.longitude}
     
     def _parse_route(self, data):
+        if data['code'] != 'Ok':
+            raise ValueError(f"Routing failed: {data.get('message', 'Unknown error')}")
+        
         route = data['routes'][0]
         geometry = route['geometry']
         
         coords = polyline.decode(geometry)
         
-        distance_meters = route['summary']['distance']
-        duration_seconds = route['summary']['duration']
+        distance_meters = route['distance']
+        duration_seconds = route['duration']
         
         return {
             'coordinates': coords,

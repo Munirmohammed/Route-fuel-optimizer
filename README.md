@@ -9,7 +9,12 @@ Django REST API that calculates optimal fuel stops for road trips within the USA
 pip install -r requirements.txt
 ```
 
-2. Configure environment variables in `.env`:
+2. Get OpenRouteService API Key (free):
+   - Sign up at: https://openrouteservice.org/dev/#/signup
+   - Get your API key from dashboard
+   - See `API_SETUP.md` for detailed instructions
+
+3. Configure environment variables in `.env`:
 ```
 SECRET_KEY=your-secret-key
 DEBUG=True
@@ -18,24 +23,25 @@ DB_USER=postgres
 DB_PASSWORD=your_password
 DB_HOST=localhost
 DB_PORT=5432
+OPENROUTE_API_KEY=your_openroute_api_key
 ```
 
-3. Create database:
+4. Create database:
 ```bash
 psql -U postgres -c "CREATE DATABASE fuel_optimizer_db;"
 ```
 
-4. Run migrations:
+5. Run migrations:
 ```bash
 python manage.py migrate
 ```
 
-5. Import fuel data:
+6. Import fuel data:
 ```bash
 python manage.py import_fuel_data
 ```
 
-6. Run server:
+7. Run server:
 ```bash
 python manage.py runserver
 ```

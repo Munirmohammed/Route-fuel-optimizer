@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import RouteOptimizerRequestSerializer
-from .services.route_service import RouteService
+from .services.osrm_route_service import OSRMRouteService
 from .services.fuel_optimizer import FuelOptimizer
 from .services.map_generator import MapGenerator
 
@@ -21,7 +21,7 @@ class RouteOptimizerView(APIView):
         end_location = serializer.validated_data['end_location']
         
         try:
-            route_service = RouteService()
+            route_service = OSRMRouteService()
             route_data = route_service.get_route(start_location, end_location)
             
             optimizer = FuelOptimizer()
