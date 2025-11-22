@@ -35,7 +35,7 @@ class RouteOptimizerView(APIView):
             avg_price = total_fuel_cost / total_gallons if total_gallons > 0 else 0
             
             map_gen = MapGenerator()
-            map_html = map_gen.generate_map(route_data, fuel_stops, start_location, end_location)
+            map_url = map_gen.generate_map(route_data, fuel_stops, start_location, end_location)
             
             response_time = time.time() - start_time
             
@@ -53,7 +53,7 @@ class RouteOptimizerView(APIView):
                     'total_fuel_cost': round(total_fuel_cost, 2),
                     'average_price_per_gallon': round(avg_price, 2)
                 },
-                'map_html': map_html,
+                'map_url': map_url,
                 'performance': {
                     'external_api_calls': 1,
                     'response_time_seconds': round(response_time, 2)

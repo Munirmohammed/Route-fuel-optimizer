@@ -7,3 +7,4 @@ env/
 *.log
 .DS_Store
 Fuel_Optimizer_API.postman_collection.json
+static

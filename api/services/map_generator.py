@@ -1,12 +1,16 @@
 import folium
 import polyline as polyline_lib
+import os
+from django.conf import settings
+from decouple import config
+import uuid
 
 
 class MapGenerator:
     
     def generate_map(self, route_data, fuel_stops, start_location, end_location):
         if not route_data['coordinates']:
-            return "<html><body>No route data available</body></html>"
+            return None
         
         center_lat = sum(c[0] for c in route_data['coordinates']) / len(route_data['coordinates'])
         center_lng = sum(c[1] for c in route_data['coordinates']) / len(route_data['coordinates'])
@@ -50,4 +54,12 @@ class MapGenerator:
                 icon=folium.Icon(color='orange', icon='gas-pump', prefix='fa')
             ).add_to(m)
         
-        return m._repr_html_()
+        maps_dir = os.path.join(settings.BASE_DIR, 'static', 'maps')
+        os.makedirs(maps_dir, exist_ok=True)
+        
+        map_filename = f"route_{uuid.uuid4().hex[:8]}.html"
+        map_path = os.path.join(maps_dir, map_filename)
+        m.save(map_path)
+        
+        base_url = config('BASE_URL', default='http://127.0.0.1:8000')
+        return f"{base_url}/static/maps/{map_filename}"
