@@ -1,0 +1,93 @@
+import math
+from api.models import FuelStation
+
+
+class FuelOptimizer:
+    MAX_RANGE_MILES = 500
+    MPG = 10
+    BUFFER_MILES = 50
+    
+    def optimize_fuel_stops(self, route_coords, distance_miles):
+        num_stops = math.ceil(distance_miles / (self.MAX_RANGE_MILES - self.BUFFER_MILES))
+        
+        if num_stops == 0:
+            return []
+        
+        segment_distance = distance_miles / num_stops
+        fuel_stops = []
+        
+        for i in range(num_stops):
+            target_distance = (i + 1) * segment_distance
+            progress = target_distance / distance_miles
+            coord_index = int(progress * (len(route_coords) - 1))
+            target_coord = route_coords[min(coord_index, len(route_coords) - 1)]
+            
+            station = self._find_cheapest_station_near(target_coord, route_coords)
+            
+            if station:
+                gallons_needed = segment_distance / self.MPG
+                fuel_cost = float(station.retail_price) * gallons_needed
+                
+                fuel_stops.append({
+                    'stop_number': i + 1,
+                    'opis_truckstop_id': station.opis_truckstop_id,
+                    'station_name': station.name,
+                    'address': station.address,
+                    'city': station.city,
+                    'state': station.state,
+                    'coordinates': {
+                        'lat': station.latitude,
+                        'lng': station.longitude
+                    },
+                    'distance_from_start_miles': round(target_distance, 2),
+                    'fuel_price_per_gallon': float(station.retail_price),
+                    'gallons_needed': round(gallons_needed, 2),
+                    'fuel_cost': round(fuel_cost, 2)
+                })
+        
+        return fuel_stops
+    
+    def _find_cheapest_station_near(self, target_coord, route_coords):
+        lat, lng = target_coord
+        radius = 0.5
+        
+        stations = FuelStation.objects.filter(
+            geocoded=True,
+            latitude__range=(lat - radius, lat + radius),
+            longitude__range=(lng - radius, lng + radius)
+        ).order_by('retail_price')[:50]
+        
+        valid_stations = []
+        for station in stations:
+            if self._is_near_route(station, route_coords):
+                valid_stations.append(station)
+        
+        return valid_stations[0] if valid_stations else stations.first()
+    
+    def _is_near_route(self, station, route_coords, max_distance_miles=15):
+        min_distance = float('inf')
+        
+        for coord in route_coords[::10]:
+            distance = self._haversine_distance(
+                station.latitude, station.longitude,
+                coord[0], coord[1]
+            )
+            min_distance = min(min_distance, distance)
+            
+            if min_distance < max_distance_miles:
+                return True
+        
+        return min_distance < max_distance_miles
+    
+    def _haversine_distance(self, lat1, lon1, lat2, lon2):
+        R = 3959
+        
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        delta_lat = math.radians(lat2 - lat1)
+        delta_lon = math.radians(lon2 - lon1)
+        
+        a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        
+        return R * c

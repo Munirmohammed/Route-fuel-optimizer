@@ -28,7 +28,7 @@ class Command(BaseCommand):
                 
                 key = (opis_id, row['Truckstop Name'], row['City'])
                 
-                if key not in stations_data or price < stations_data[key]['price']:
+                if key not in stations_data or price < stations_data[key]['retail_price']:
                     stations_data[key] = {
                         'opis_truckstop_id': opis_id,
                         'name': row['Truckstop Name'],
