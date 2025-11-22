@@ -2,51 +2,70 @@
 
 Django REST API that calculates optimal fuel stops for road trips within the USA based on fuel prices and vehicle range.
 
+## Features
+
+- Finds cost-effective fuel stops along any US route
+- Uses real fuel price data from 6,900+ truck stops
+- Generates interactive maps with route and fuel stops
+- Fast response times (2-5 seconds)
+- Calculates total trip cost based on 10 MPG
+- Smart caching for repeated routes
+- No API keys required - completely free to use
+
+## Technology Stack
+
+- **Backend:** Django 5.1.6, Django REST Framework
+- **Database:** PostgreSQL with spatial indexes
+- **Routing:** OSRM (Open Source Routing Machine) - free, no API key
+- **Geocoding:** Nominatim (OpenStreetMap) - free, no API key
+- **Maps:** Folium for interactive HTML maps
+- **Caching:** Django cache framework
+
 ## Setup
 
-1. Install dependencies:
+### 1. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Get OpenRouteService API Key (free):
-   - Sign up at: https://openrouteservice.org/dev/#/signup
-   - Get your API key from dashboard
-   - See `API_SETUP.md` for detailed instructions
-
-3. Configure environment variables in `.env`:
+### 2. Configure environment variables in `.env`:
 ```
-SECRET_KEY=your-secret-key
+SECRET_KEY=your-secret-key-here
 DEBUG=True
 DB_NAME=fuel_optimizer_db
 DB_USER=postgres
 DB_PASSWORD=your_password
 DB_HOST=localhost
 DB_PORT=5432
-OPENROUTE_API_KEY=your_openroute_api_key
+BASE_URL=http://127.0.0.1:8000
 ```
 
-4. Create database:
+### 3. Create database:
 ```bash
 psql -U postgres -c "CREATE DATABASE fuel_optimizer_db;"
 ```
 
-5. Run migrations:
+### 4. Run migrations:
 ```bash
 python manage.py migrate
 ```
 
-6. Import fuel data:
+### 5. Import fuel data:
 ```bash
 python manage.py import_fuel_data
 ```
 
-7. Run server:
+### 6. Run server:
 ```bash
 python manage.py runserver
 ```
 
-**Note:** Stations are geocoded on-demand when routes are calculated. First-time routes may take 10-15 seconds while cities are geocoded. Subsequent requests use cached coordinates and respond in 2-3 seconds.
+## Performance
+
+- **First request:** 3-10 seconds (geocodes cities on-demand)
+- **Cached requests:** 2-3 seconds (uses stored coordinates)
+- **API calls:** Only 1 routing API call per unique route
+- **Database:** 6,967 fuel stations with optimized indexes
 
 ## API Endpoint
 
@@ -92,10 +111,38 @@ python manage.py runserver
 }
 ```
 
-## Features
+## How It Works
 
-- Optimizes fuel stops based on cost
-- 500-mile max range, 10 MPG vehicle
-- Interactive map visualization
-- Fast response time (< 5 seconds)
-- Caching for improved performance
+1. **Route Calculation:** Uses OSRM to get the optimal driving route
+2. **Fuel Stop Planning:** Divides route into 450-mile segments (500-mile range with safety buffer)
+3. **Station Search:** Finds cheapest stations within 30-50 miles of the route
+4. **Cost Calculation:** Computes fuel needed (distance ÷ 10 MPG) × price per gallon
+5. **Map Generation:** Creates interactive map with route and fuel stops
+6. **Smart Caching:** Stores routes and geocoded cities for fast repeated requests
+
+## Project Structure
+
+```
+fuel_optimizer/
+├── api/
+│   ├── models.py                 # FuelStation model
+│   ├── views.py                  # API endpoint
+│   ├── serializers.py            # Request/response serializers
+│   ├── services/
+│   │   ├── osrm_route_service.py    # OSRM routing integration
+│   │   ├── fuel_optimizer.py        # Fuel stop optimization algorithm
+│   │   └── map_generator.py         # Folium map generation
+│   └── management/commands/
+│       └── import_fuel_data.py      # CSV import command
+├── data/
+│   └── fuel-prices-for-be-assessment.csv
+├── static/maps/                  # Generated map files
+└── requirements.txt
+```
+
+## Notes
+
+- Stations are geocoded lazily (on first use) to avoid 2-hour setup time
+- Geocoded coordinates are cached in the database permanently
+- The algorithm prioritizes price over distance for cost optimization
+- Duplicate stations are automatically filtered out
