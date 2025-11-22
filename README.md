@@ -35,15 +35,12 @@ python manage.py migrate
 python manage.py import_fuel_data
 ```
 
-6. Geocode stations (takes ~2 hours):
-```bash
-python manage.py geocode_stations
-```
-
-7. Run server:
+6. Run server:
 ```bash
 python manage.py runserver
 ```
+
+**Note:** Stations are geocoded on-demand when routes are calculated. First-time routes may take 10-15 seconds while cities are geocoded. Subsequent requests use cached coordinates and respond in 2-3 seconds.
 
 ## API Endpoint
 

@@ -1,11 +1,17 @@
 import math
+import time
 from api.models import FuelStation
+from geopy.geocoders import Nominatim
 
 
 class FuelOptimizer:
     MAX_RANGE_MILES = 500
     MPG = 10
     BUFFER_MILES = 50
+    
+    def __init__(self):
+        self.geolocator = Nominatim(user_agent="fuel_optimizer_app")
+        self.geocoded_cities = {}
     
     def optimize_fuel_stops(self, route_coords, distance_miles):
         num_stops = math.ceil(distance_miles / (self.MAX_RANGE_MILES - self.BUFFER_MILES))
@@ -49,13 +55,19 @@ class FuelOptimizer:
     
     def _find_cheapest_station_near(self, target_coord, route_coords):
         lat, lng = target_coord
-        radius = 0.5
+        radius = 1.0
         
         stations = FuelStation.objects.filter(
-            geocoded=True,
             latitude__range=(lat - radius, lat + radius),
             longitude__range=(lng - radius, lng + radius)
-        ).order_by('retail_price')[:50]
+        ).order_by('retail_price')[:100]
+        
+        if not stations.exists():
+            stations = FuelStation.objects.all().order_by('retail_price')[:100]
+        
+        self._ensure_stations_geocoded(stations)
+        
+        stations = stations.filter(geocoded=True)
         
         valid_stations = []
         for station in stations:
@@ -63,6 +75,38 @@ class FuelOptimizer:
                 valid_stations.append(station)
         
         return valid_stations[0] if valid_stations else stations.first()
+    
+    def _ensure_stations_geocoded(self, stations):
+        cities_to_geocode = set()
+        
+        for station in stations:
+            if not station.geocoded:
+                city_key = f"{station.city}, {station.state}"
+                cities_to_geocode.add((station.city, station.state, city_key))
+        
+        for city, state, city_key in cities_to_geocode:
+            if city_key in self.geocoded_cities:
+                lat, lng = self.geocoded_cities[city_key]
+            else:
+                try:
+                    location = self.geolocator.geocode(f"{city}, {state}, USA", timeout=10)
+                    if location:
+                        lat, lng = location.latitude, location.longitude
+                        self.geocoded_cities[city_key] = (lat, lng)
+                        
+                        FuelStation.objects.filter(
+                            city=city, 
+                            state=state, 
+                            geocoded=False
+                        ).update(
+                            latitude=lat,
+                            longitude=lng,
+                            geocoded=True
+                        )
+                        
+                        time.sleep(1.1)
+                except:
+                    pass
     
     def _is_near_route(self, station, route_coords, max_distance_miles=15):
         min_distance = float('inf')
