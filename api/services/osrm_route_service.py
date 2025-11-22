@@ -33,8 +33,8 @@ class OSRMRouteService:
     
     def _geocode_location(self, location):
         from geopy.geocoders import Nominatim
-        geolocator = Nominatim(user_agent="fuel_optimizer")
-        result = geolocator.geocode(location + ", USA")
+        geolocator = Nominatim(user_agent="fuel_optimizer", timeout=15)
+        result = geolocator.geocode(location + ", USA", timeout=15)
         if not result:
             raise ValueError(f"Could not geocode location: {location}")
         return {'lat': result.latitude, 'lng': result.longitude}
